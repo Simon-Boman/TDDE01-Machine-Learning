@@ -4,18 +4,14 @@ stations <- read.csv("stations.csv")
 temps <- read.csv("temps50k.csv")
 st <- merge(stations,temps,by="station_number")
 
-#You are asked to provide a temperature forecast for a date and place in Sweden. The
-#forecast should consist of the predicted temperatures from 4 am to 24 pm in an interval of 2
-#hours.
-
-#The point to predict, a=long b=lat
-a <- 17.489725
-b <- 58.943489 
-
-#latitude, longitude
+a <- 17.9513 #longitude
+b <- 59.3537 #latitude
 testLoc <- c(longitude = a, latitute = b)
+
 #The date to predict
-testDate <- as.Date("2015-12-24")
+testDate <- as.Date("2000-10-23")
+
+#Verklig tid och temperatur för ovan: 00.00  2.7grader
 
 #delete all data after our observation
 #convert our dates into Date objects
@@ -25,36 +21,25 @@ st$date = as.Date(st$date, format = "%Y-%m-%d")
 #if difftime of our date and the ones in our data is smaller or equal to 0 (i.e. our data is "larger", i.e. after the other date),
 #then keep it. so we make a sub set based on this condition. 
 stFiltered = subset(st, difftime(testDate, st$date) >= 0);
-#stFiltered = st[which(difftime(testDate, st$date) <= 0),]
+#stFiltered = st[which(difftime(testDate, st$date) >= 0),]
 
 #The times we want to predict temperature for
 testTimes <- c("04:00:00", "06:00:00","08:00:00","10:00:00", "12:00:00","14:00:00","16:00:00", "18:00:00","20:00:00",
            "22:00:00", "24:00:00")
 
 
-
 ###########1 - Smoothing coefficients##########
-#Use a kernel that is the sum of three Gaussian kernels:
-#1. The first to account for the physical distance from a station to the point of interest. For
-#this purpose, use the function distHaversine from the R package geosphere.
-#2. The second to account for the distance between the day a temperature measurement
-#was made and the day of interest.
-#3. The third to account for the distance between the hour of the day a temperature measurement was made and the hour of interest.
-
 
 #Choose an appropriate smoothing coefficient or width for each of the three kernels above:
 #No cross-validation should be used. Instead, choose manually a width that gives large kernel
 #values to closer points and small values to distant points.
-#Show this with a plot of the kernel value as a function of distance. H
-
-
-
+#Show this with a plot of the kernel value as a function of distance. 
 
 #larger h - points further away have larger impact
 
 
 ##################
-#Kernel 1 - physical distance
+#Kernel 1 - Physical distance from a station to the point of interes
 ##################
 h_distance = 50000
 
@@ -76,7 +61,7 @@ plot(distances, kernelDist, type='l')
 #using smoothing factor 50000 for this makes distances > 100 km have almost 0 impact, which is reasonable. 
 
 ##################
-#Kernel 2 - distance between days 
+#Kernel 2 - Distance between days a temperature measurement was made and the day of interest.
 ##################
 h_date <- 15
 
@@ -87,7 +72,7 @@ plot(days, kernelDays, type='l')
 #using smoothing factor 15 for this makes distances > 30 days have almost 0 impact, which is reasonable. 
 
 ##################
-#Kernel 3 - distance in hours
+#Kernel 3 - Distance between the hour of the day a temperature measurement was made and the hour of interest.
 ##################
 h_time <- 3
 hours = seq(from = 0, to = 12, by = 1)
@@ -164,49 +149,6 @@ KernelTime <- function(testTime, stationTime) {
 }
 
 
-stationCords = c(17,59)
-KernelDistance (testLoc, stationCords)
-
-#testDate <- as.Date("1997-12-24")
-stationDate <- as.Date("1990-11-29")
-KernelDays(testDate, stationDate)
-
-stationTime = "08:00:00"
-KernelTime(testTimes[1], stationTime)
-
-################TESTING###################
-kernelvals <- vector(length=nrow(stFiltered))
-kernelvals_temps <- vector(length=nrow(stFiltered))
-for (obs in 1:nrow(stFiltered)) {
-  kernelvals[obs] = KernelDistance(testLoc, c(stFiltered$longitude[obs],stFiltered$latitude[obs]))
-  kernelvals_temps[obs] = kernelvals[obs] * stFiltered$air_temperature[obs]
-}
-sum(kernelvals_temps)
-sum(kernelvals)
-
-kernelvals <- vector(length=nrow(stFiltered))
-kernelvals_temps <- vector(length=nrow(stFiltered))
-for (obs in 1:nrow(stFiltered)) {
-  kernelvals[obs] = KernelDays(testDate, stFiltered$date[obs])
-  kernelvals_temps[obs] = kernelvals[obs] * stFiltered$air_temperature[obs]
-}
-sum(kernelvals_temps)
-sum(kernelvals)
-
-
-kernelvals <- vector(length=nrow(stFiltered))
-kernelvals_temps <- vector(length=nrow(stFiltered))
-for (obs in 1:nrow(stFiltered)) {
-  kernelvals[obs] = KernelTime(testTimes[1], stFiltered$time[obs])
-  kernelvals_temps[obs] = kernelvals[obs] * stFiltered$air_temperature[obs]
-}
-sum(kernelvals_temps)
-sum(kernelvals)
-################TESTING###################
-
-
-
-
 #Combined kernel using the sum of the 3 above kernels, 
 #giving us kernelvalue of 2 different locations, 2 different dates, 2 different times
 #all the points in st will contribute, but with different weight (kernelvalue)
@@ -217,21 +159,6 @@ KernelSum <- function (testLoc, testDate, testTime, stationLoc, stationDate, sta
 }
 
 KernelSum(testLoc, testDate, testTimes[1], stationCords, stationDate, stationTime)
-
-
-
-
-#för tid = 04:00
-sumkernelvals <- vector(length=nrow(stFiltered))
-sumkernelvals_temps <- vector(length=nrow(stFiltered))
-for (obs in 1:nrow(stFiltered)) {
-  sumkernelvals[obs] = KernelSum(testLoc, testDate, testTimes[1], c(stFiltered$longitude[obs],stFiltered$latitude[obs]),
-                                 as.Date(stFiltered$date[obs]), stFiltered$time[obs])
-  sumkernelvals_temps[obs] = sumkernelvals[obs] * stFiltered$air_temperature[obs]
-}
-temp = sum(kernelvals_temps)/sum(sumkernelvals)
-temp
-
 
 tempSumKernel <- vector(length=length(testTimes))
 
@@ -245,8 +172,9 @@ for (time in 1:length(testTimes)) {
     sumkernelvals[obs] = KernelSum(testLoc, testDate, testTimes[time], c(stFiltered$longitude[obs],stFiltered$latitude[obs]),
                                   as.Date(stFiltered$date[obs]), stFiltered$time[obs])
     sumkernelvals_temps[obs] = sumkernelvals[obs] * stFiltered$air_temperature[obs]
-    
   }
+  
+  
   temp = sum(sumkernelvals_temps)/sum(sumkernelvals)
   tempSumKernel[time] = temp
 }
@@ -281,4 +209,4 @@ for (time in 1:length(testTimes)) {
 
 plot(seq(from=4, to=24, by=2), tempMultKernel, type="o")
 
-#plot(temp, type="o")
+plot(tempMultKernel, type="o")

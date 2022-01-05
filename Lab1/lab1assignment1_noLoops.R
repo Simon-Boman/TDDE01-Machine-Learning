@@ -5,6 +5,7 @@ data=read.csv("optdigits.csv")
 
 n=dim(data)[1]
 set.seed(12345)
+#sample - extracts 50% of the indexes
 id=sample(1:n, floor(n*0.5))
 traindata=data[id,] 
 
@@ -80,7 +81,7 @@ heatmapPlot(77)
 calc_Missclassification_k_1_to_30 <- function(data) {
   missclassifications = numeric(30)
   for (i in 1:30) {
-    kknn_model <- kknn(formula=as.factor(traindata[,65])~.,  train=traindata, test=data, k=i, kernel="rectangular")
+    kknn_model <- kknn(formula=as.factor(traindata[,65])~., train=traindata, test=data, k=i, kernel="rectangular")
     predictions <- kknn_model[["fitted.values"]]
     confusionMatrix = table(data[,65], predictions)
     missclass = ( 1-sum(diag(confusionMatrix))/length(data[,65]))
@@ -99,16 +100,12 @@ points(kvalues, missclassificationsValidation, col="orange")
 
 legend(0,0.045,legend=c("training set","validation set"), col=c("blue","orange"),pch=c("o","o"))
 
-
-#### not part of the assignment ####
-#below 2 lines just for testing if our assumtion of k=3 is optimal is reasonable by comparing with test data aswell.
-missclassificationsTest = calc_Missclassification_k_1_to_30(testdata)
-points(kvalues, missclassificationsTest, col="green")
-#### not part of the assignment ####
-
+#below just for testing if our assumtion of k=3 is optimal is reasonable by comparing with test data aswell.
+#missclassificationsTest = calc_Missclassification_k_1_to_30(testdata)
+#points(kvalues, missclassificationsTest, col="green")
 
 #missclassifcation for test data when k=3. 
-kknn_testdata <- kknn(formula=as.factor(traindata[,65])~.,  train=traindata, test=testdata, k=3, kernel="rectangular")
+kknn_testdata <- kknn(formula=as.factor(traindata[,65])~., train=traindata, test=testdata, k=3, kernel="rectangular")
 predictionsTest <- kknn_testdata[["fitted.values"]]
 confusionMatrixTest = table(testdata[,65], predictionsTest)
 missclassificationTestdata_k3 = ( 1-sum(diag(confusionMatrixTest))/length(testdata[,65]))
@@ -142,3 +139,4 @@ for (j in 1:30) {
 
 plot(kvalues,crossEntroypValidation, type="b", col="red", main = "Cross-entropy for validation set for k= 1..30",
      xlab="k-values", ylab="cross-entropy" )
+

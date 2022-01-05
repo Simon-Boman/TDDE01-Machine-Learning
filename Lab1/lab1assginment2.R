@@ -7,30 +7,20 @@ id=sample(1:n, floor(n*0.6))
 traindata=dataScaled[id,]
 testdata=dataScaled[-id,]
 
-
 #2
 # fit a linear regression model using training data. uses ordinary least squares for fitting. 
 #remove columns we are not interested in, and -1 to remove intercept
-#?# why no intercept? data and subset, when use subset? if we dont divide into train and test data?
-
 lm_traindata = lm(motor_UPDRS ~ . -age -sex -subject. -test_time -motor_UPDRS -total_UPDRS -1, data=as.data.frame(traindata) )
 
 #predict using our model on the training data 
 pred_train <- predict(lm_traindata, se.fit=TRUE) #contains prediction, residuals, degrees of freedom
-
-#pred_train$fit[1:50] - the actual predictions
-#lm_traindata$fitted.values[1:50] - fitted values, i.e. the predictions from our lm_traindata
-#both are the same! 
-
-#?# residual standard error = sigma, - i princip standard deviation
+#pred_train$fit - the actual predictions vs lm_traindata$fitted.values[1:50] - fitted values, i.e. the predictions from our lm_traindata
 
 #predict using our model on new data using our test data. 
 pred_test <- predict(object=lm_traindata, newdata=as.data.frame(testdata), se.fit=TRUE)
 
 MSETrain = sum((traindata[,5] - pred_train$fit)^2) / nrow(traindata)
 MSETest = sum((testdata[,5] - pred_test$fit)^2) / nrow(testdata)
-
-#3
 
 #3a Loglikelihood
 Loglikelihood <- function(trainingData, theta, sigma) {
@@ -45,7 +35,6 @@ Loglikelihood <- function(trainingData, theta, sigma) {
   
   loglik = - n/2 * log(2*pi*sigma^2) -1/(2*sigma^2) * sum(diff^2)
   return(loglik)
-  
 }
 
 #3b Ridge
@@ -59,42 +48,35 @@ Ridge <- function(trainingData, theta_sigma, lam) {
   return(ridge)
 }
 
-
 #3c) RidgeOpt
 RidgeOpt <- function(trainingDataIn, theta, sigma, lambdaIn) {
   initialValues = c(theta, sigma)
-  
   #optimizing over c(theta,sigma), which is why we in the ridge function have theta_sigma as a parameter. 
   #sending trainingDataIn and lambdaIn as parameters not to optimize over to the Ridge function
   res = optim(par = initialValues, fn=Ridge, gr = NULL, trainingData=trainingDataIn, lam=lambdaIn,  method="BFGS")
   return(res)
-  
 }
+
 model3 = lm(motor_UPDRS ~ . -age -sex -subject. -test_time -motor_UPDRS -total_UPDRS -1, data=as.data.frame(traindata) )
 theta = model3[["coefficients"]]
 sigma = summary(model3)$sigma
 
-#3d DF - #trace, i.e. the diagonal of X(X^T X + lambda*I)^-1 *X^T  ?
+#3d DF - #trace, i.e. the diagonal of X(X^T X + lambda*I)^-1 *X^T  hat matrix
 DF <- function(trainingData, lambda) {
   X = trainingData[,7:22]
-  
-  #dim - rows * cols
-  #matrix mult: first matrix cols = second matrix rows. 
-  #dimension of product is first matrixs rows * second matrixs columns. 
-  
+
   nforDiagMatrix = nrow(t(X) %*% X)
   hatMatrix =  X %*% solve(( t(X) %*% X + lambda*diag(nforDiagMatrix)) ) %*% t(X) 
   df = sum(diag(hatMatrix))
   return(df)
 }
 
-###for testing the functions, not part of the assignment###
-#loglikelihood3a = Loglikelihood(traindata, theta, sigma)
+#for testing the functions, not part of the assignment
+#loglikelihood3a = Loglikelihood(traindata, theta, sigma) 
 #logLik(model3) - built in function
-#ridge3b = Ridge(traindata, c(theta, sigma), 0)
+#ridge3b = Ridge(traindata, c(theta, sigma), 1)
 #ridge3c = RidgeOpt(traindata, theta, sigma, 1)
 #df = DF(traindata, 0.5)
-###########################################################
 
 
 #4
@@ -128,7 +110,6 @@ calcMSE <-function(yHat, y) {
   return(MSE)
 }
 
-
 #lambda = 1 train
 predTrainLambda1 = prediction(OptimalParametersLambda_1, traindata)
 calcMSE(predTrainLambda1, traindata[,5])
@@ -158,9 +139,3 @@ dfTrainLambda1000 = DF(traindata, 1000)
 predTestLambda1000 = prediction(OptimalParametersLambda_1000, testdata)
 calcMSE(predTestLambda1000, testdata[,5])
 dfTestLambda1000 = DF(traindata, 1000)
-
-
-#DF decreasing as lambda increases? Why?
-
-#standard deviation sigma? - bara f??r statisticals. annars irl anv??nder ej, ty vi ??nd?? ej kan p??verka den. 
-
